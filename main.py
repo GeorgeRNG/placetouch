@@ -13,23 +13,20 @@ for (i, device) in enumerate(options):
         touchPad = i
 
 
-touchHeight = 0
-touchWidth = 0
+capabilities = options[touchPad].capabilities()[3]
+touchHeight = capabilities[1][1].max
+touchWidth = capabilities[0][1].max
+# touchHeight = touchWidth = 0
 
-screenHeight = 530
-screenWidth = 970
+################# OPTIONS #################
+screenHeight = 540
+screenWidth = 960
 
-leftBorder = 200
-rightBorder = 400
-topBorder = 100
-bottomBorder = 100
-
-fingerI = 0
-x = 0
-y = 0
-clicking = False
-
-touchPadThread = None
+leftBorder = 0.1
+rightBorder = 0.9
+topBorder = 0.1
+bottomBorder = 0.9
+################# OPTIONS #################
 
 window = tk.Tk()
 xText = tk.StringVar()
@@ -58,19 +55,21 @@ def mainWindow():
 def touchpad():
 
     events = (
-        uinput.REL_X,
-        uinput.REL_Y,
         uinput.BTN_LEFT,
-        uinput.BTN_RIGHT,
+        uinput.REL_X,
+        uinput.REL_Y
     )
 
     with uinput.Device(events) as device:
 
-        time.sleep(1)
+        time.sleep(0.1)
 
         for event in options[touchPad].read_loop():
             get_xy_coords(event,device)
 
+cursorX = cursorY = 0
+fingerI = x = y = 0
+clicking = False
 def get_xy_coords(e,device):
     global fingerI
     if e.code == 47: # finger index
@@ -79,38 +78,80 @@ def get_xy_coords(e,device):
     if e.code == 57: # some touch index thing
         if(e.value == -1):
             fingerI = 0
+            canTrustCursor = False
 
     if fingerI == 0:
+        global cursorX, cursorY
         if e.code == 53:
-            global touchWidth
-            global x
+            global touchWidth, x
             x = e.value
             if(e.value > touchWidth):
                 touchWidth = e.value
             xText.set("Touch X: " + str(x) + " / " + str(touchWidth))
 
-            pointInTouchPad = (e.value - leftBorder) / (touchWidth - (leftBorder + rightBorder))
-
-            device.emit(uinput.REL_X, -10000)
-            device.emit(uinput.REL_X, int(pointInTouchPad * screenWidth))
+            cursorX = int(stretch(e.value / touchWidth, leftBorder, rightBorder) * screenWidth)
         if e.code == 54:
-            global touchHeight
-            global y
+            global touchHeight, y
             y = e.value
             if(e.value > touchHeight):
                 touchHeight = e.value
             yText.set("Touch Y: " + str(y) + " / " + str(touchHeight))
 
-            pointInTouchPad = (e.value - topBorder) / (touchHeight - (topBorder + bottomBorder))
+            cursorY = int(stretch(e.value / touchHeight, topBorder, bottomBorder) * screenHeight)
 
-            device.emit(uinput.REL_Y, -10000)
-            device.emit(uinput.REL_Y, int(pointInTouchPad * screenHeight))
+    moveTo(device, cursorX, cursorY)
 
     if e.code == 272:
         clicking = e.value == 1
         clickingText.set("Clicking: " + str(clicking))
         device.emit(uinput.BTN_LEFT, e.value)
 
+def stretch(value, start, end):
+    if start == end:
+        return 0.5
+
+    if start > end:
+        start, end = end, start
+
+    if value <= start:
+        return 0.0
+    elif value >= end:
+        return 1.0
+    else:
+        return (value - start) / (end - start)
+
+canTrustCursor = False
+lastCursorX = lastCursorY = 0
+def moveTo(device, x, y):
+    global screenWidth, screenWidth
+    global cursorX, cursorY, lastCursorX, lastCursorY, canTrustCursor
+
+    cursorX = x
+    cursorY = y
+
+    if not canTrustCursor:
+        # print("reset cursor")
+        device.emit(uinput.REL_X, -10000, syn=False)
+        device.emit(uinput.REL_Y, -10000)
+
+        device.emit(uinput.REL_X, x, syn=False)
+        device.emit(uinput.REL_Y, y)
+
+        canTrustCursor = True
+
+    else:
+        device.emit(uinput.REL_X, x - lastCursorX)
+        device.emit(uinput.REL_Y, y - lastCursorY)
+
+    if(x >= screenWidth or y >= screenHeight):
+        canTrustCursor = False
+
+    lastCursorX = x
+    lastCursorY = y
+    # device.syn()
+
+
+touchPadThread = None
 if __name__ == "__main__":
     touchPadThread = threading.Thread(target=touchpad)
     touchPadThread.daemon = True
