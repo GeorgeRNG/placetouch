@@ -129,12 +129,20 @@ def moveTo(device, x, y):
     cursorX = x
     cursorY = y
 
-    if not canTrustCursor:
-        # print("reset cursor")
-        device.emit(uinput.REL_X, -10000, syn=False)
+    if(x >= screenWidth or y >= screenHeight):
+        canTrustCursor = False
+
+    if x == 0 or not canTrustCursor:
+        print("move to left")
+        device.emit(uinput.REL_X, -10000)
+    if y == 0 or not canTrustCursor:
+        print("move to top")
         device.emit(uinput.REL_Y, -10000)
 
-        device.emit(uinput.REL_X, x, syn=False)
+    if not canTrustCursor:
+        print("reset cursor")
+
+        device.emit(uinput.REL_X, x)
         device.emit(uinput.REL_Y, y)
 
         canTrustCursor = True
@@ -142,9 +150,6 @@ def moveTo(device, x, y):
     else:
         device.emit(uinput.REL_X, x - lastCursorX)
         device.emit(uinput.REL_Y, y - lastCursorY)
-
-    if(x >= screenWidth or y >= screenHeight):
-        canTrustCursor = False
 
     lastCursorX = x
     lastCursorY = y
