@@ -13,5 +13,4 @@ Then clone the repository:
 ## Use
 Open the folder in a terminal, and run  
 `sudo python3 main.py`  
-Move your finger to the far ends of your touchpad to calibrate   
-You might want to disable the default touchpad in settings, the function key may or might not break this.  
+Disable your touchpad in settings. 
