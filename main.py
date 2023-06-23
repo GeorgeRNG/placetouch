@@ -13,8 +13,17 @@ for (i, device) in enumerate(options):
     if("touchpad" in device.name.lower()):
         touchPad = i
 
+events = (
+    uinput.BTN_LEFT,
+    uinput.REL_X,
+    uinput.REL_Y
+)
+device = uinput.Device(events)
+
 config = configuration.load()
 configuration.save(config)
+
+enabled = True
 
 capabilities = options[touchPad].capabilities()[3]
 touchHeight = capabilities[1][1].max
@@ -22,6 +31,7 @@ touchWidth = capabilities[0][1].max
 # touchHeight = touchWidth = 0
 
 window = tk.Tk()
+# window.grid_columnconfigure((0,1))
 xText = tk.StringVar()
 xText.set("X: -")
 yText = tk.StringVar()
@@ -30,11 +40,11 @@ clickingText = tk.StringVar()
 clickingText.set("Clicking: False")
 selectedEvent = tk.StringVar()
 selectedEvent.set(optionNames[touchPad])
+enabledVariable = tk.BooleanVar()
+enabledVariable.set(True)
 def mainWindow():
-    title = tk.Label(text="placetouch")
-    title.pack()
     touchpadSelection = tk.OptionMenu(window,selectedEvent,*optionNames)
-    touchpadSelection.pack()
+    touchpadSelection.grid(column=0,row=0,columnspan=2)
 
     dataFrame = tk.LabelFrame(text="Infomation")
     xLabel = tk.Label(dataFrame,textvariable=xText)
@@ -43,7 +53,7 @@ def mainWindow():
     yLabel.pack()
     clickingLable = tk.Label(dataFrame,textvariable=clickingText)
     clickingLable.pack()
-    dataFrame.pack()
+    dataFrame.grid(column=0,row=1)
 
     def updateOptions():
         try:
@@ -60,14 +70,22 @@ def mainWindow():
 
     def tryScreenSize():
         try:
+            global canTrustCursor
+            enabledVariable.set(False)
+            updateEnabled()
+
             width = int(screenWidthText.get())
             height = int(screenHeightText.get())
 
-
             canTrustCursor = False
             moveTo(width,height)
-        finally:
-            return
+        except ValueError:
+            print("couldn't parse integers")
+
+    def updateEnabled():
+        global enabled
+        enabled = enabledVariable.get()
+        device.emit(uinput.BTN_LEFT, 0)
 
 
     optionFrame = tk.LabelFrame(text="Options")
@@ -84,25 +102,22 @@ def mainWindow():
 
     tk.Button(optionFrame,text="Update Options",command=updateOptions).grid(row=2,column=0)
     tk.Button(optionFrame,text="Check Screen Size",command=tryScreenSize).grid(row=2,column=1)
-    optionFrame.pack()
+    optionFrame.grid(column=1,row=1)
+
+    enabledSwitch = tk.Checkbutton(text="Enabled",variable=enabledVariable,command=updateEnabled)
+    enabledSwitch.grid(column=0,row=3)
 
     exitButton = tk.Button(text="Exit",command=exit)
-    exitButton.pack()
+    exitButton.grid(column=1,row=3)
     window.mainloop()
 
 def touchpad():
+    global enabled, device
 
-    events = (
-        uinput.BTN_LEFT,
-        uinput.REL_X,
-        uinput.REL_Y
-    )
+    time.sleep(0.1)
 
-    with uinput.Device(events) as device:
-
-        time.sleep(0.1)
-
-        for event in options[touchPad].read_loop():
+    for event in options[touchPad].read_loop():
+        if enabled:
             get_xy_coords(event,device)
 
 cursorX = cursorY = 0
@@ -137,7 +152,7 @@ def get_xy_coords(e,device):
 
             cursorY = int(stretch(e.value / touchHeight, config['topBorder'], config['bottomBorder']) * config['screenHeight'])
 
-    moveTo(device, cursorX, cursorY)
+    moveTo(cursorX, cursorY)
 
     if e.code == 272:
         clicking = e.value == 1
@@ -160,7 +175,7 @@ def stretch(value, start, end):
 
 canTrustCursor = False
 lastCursorX = lastCursorY = 0
-def moveTo(device, x, y):
+def moveTo(x, y):
     global cursorX, cursorY, lastCursorX, lastCursorY, canTrustCursor
 
     cursorX = x
