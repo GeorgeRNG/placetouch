@@ -15,8 +15,8 @@ for (i, device) in enumerate(options):
 
 events = (
     uinput.BTN_LEFT,
-    uinput.REL_X,
-    uinput.REL_Y
+    uinput.ABS_X + (0, 0xFFFF, 0, 0),
+    uinput.ABS_Y + (0, 0xFFFF, 0, 0)
 )
 device = uinput.Device(events)
 
@@ -56,31 +56,8 @@ def mainWindow():
     dataFrame.grid(column=0,row=1)
 
     def updateOptions():
-        try:
-            width = int(screenWidthText.get())
-            height = int(screenHeightText.get())
+        configuration.save(config)
 
-            config['screenWidth'] = width
-            config['screenHeight'] = height
-
-            configuration.save(config)
-        except:
-            screenWidthText.set(str(config['screenWidth']))
-            screenHeightText.set(str(config['screenHeight']))
-
-    def tryScreenSize():
-        try:
-            global canTrustCursor
-            enabledVariable.set(False)
-            updateEnabled()
-
-            width = int(screenWidthText.get())
-            height = int(screenHeightText.get())
-
-            canTrustCursor = False
-            moveTo(width,height)
-        except ValueError:
-            print("couldn't parse integers")
 
     def updateEnabled():
         global enabled
@@ -90,18 +67,8 @@ def mainWindow():
 
     optionFrame = tk.LabelFrame(text="Options")
     optionFrame.grid_columnconfigure((0,1), weight=1)
-    tk.Label(optionFrame,text="Screen Width").grid(row=0,column=0)
-    screenWidthText = tk.StringVar()
-    screenWidthText.set(str(config['screenWidth']))
-    tk.Entry(optionFrame,textvariable=screenWidthText).grid(row=0,column=1)
-
-    tk.Label(optionFrame,text="Screen Height").grid(row=1,column=0)
-    screenHeightText = tk.StringVar()
-    screenHeightText.set(str(config['screenHeight']))
-    tk.Entry(optionFrame,textvariable=screenHeightText).grid(row=1,column=1)
-
+   
     tk.Button(optionFrame,text="Update Options",command=updateOptions).grid(row=2,column=0)
-    tk.Button(optionFrame,text="Check Screen Size",command=tryScreenSize).grid(row=2,column=1)
     optionFrame.grid(column=1,row=1)
 
     enabledSwitch = tk.Checkbutton(text="Enabled",variable=enabledVariable,command=updateEnabled)
@@ -142,7 +109,7 @@ def get_xy_coords(e,device):
                 touchWidth = e.value
             xText.set("Touch X: " + str(x) + " / " + str(touchWidth))
 
-            cursorX = int(stretch(e.value / touchWidth, config['leftBorder'], config['rightBorder']) * config['screenWidth'])
+            cursorX = int(stretch(e.value / touchWidth, config['leftBorder'], config['rightBorder']) * 0xFFFF)
         if e.code == 54:
             global touchHeight, y
             y = e.value
@@ -150,7 +117,7 @@ def get_xy_coords(e,device):
                 touchHeight = e.value
             yText.set("Touch Y: " + str(y) + " / " + str(touchHeight))
 
-            cursorY = int(stretch(e.value / touchHeight, config['topBorder'], config['bottomBorder']) * config['screenHeight'])
+            cursorY = int(stretch(e.value / touchHeight, config['topBorder'], config['bottomBorder']) * 0xFFFF)
 
     moveTo(cursorX, cursorY)
 
@@ -173,43 +140,23 @@ def stretch(value, start, end):
     else:
         return (value - start) / (end - start)
 
-canTrustCursor = False
 lastCursorX = lastCursorY = 0
 def moveTo(x, y):
-    global cursorX, cursorY, lastCursorX, lastCursorY, canTrustCursor
+    global cursorX, cursorY, lastCursorX, lastCursorY
 
     cursorX = x
     cursorY = y
 
-    if(x >= config['screenWidth'] or y >= config['screenHeight']):
-        canTrustCursor = False
-
-    if x == 0 or not canTrustCursor:
-        print("move to left")
-        device.emit(uinput.REL_X, -10000)
-    if y == 0 or not canTrustCursor:
-        print("move to top")
-        device.emit(uinput.REL_Y, -10000)
-
-    if not canTrustCursor:
-        print("reset cursor")
-
-        device.emit(uinput.REL_X, x)
-        device.emit(uinput.REL_Y, y)
-
-        canTrustCursor = True
-
-    else:
-        device.emit(uinput.REL_X, x - lastCursorX)
-        device.emit(uinput.REL_Y, y - lastCursorY)
+    device.emit(uinput.ABS_X, x, syn=False)
+    device.emit(uinput.ABS_Y, y)
 
     lastCursorX = x
     lastCursorY = y
     # device.syn()
 
 
-touchPadThread = None
 if __name__ == "__main__":
+    touchPadThread = None
     touchPadThread = threading.Thread(target=touchpad)
     touchPadThread.daemon = True
     touchPadThread.start()
