@@ -6,9 +6,6 @@ def load():
             return json.loads(file.read())
     except FileNotFoundError:
         return {
-            "screenWidth": 960,
-            "screenHeight": 540,
-            
             "leftBorder": 0.1,
             "rightBorder": 0.9,
             "topBorder": 0.1,

@@ -42,6 +42,14 @@ selectedEvent = tk.StringVar()
 selectedEvent.set(optionNames[touchPad])
 enabledVariable = tk.BooleanVar()
 enabledVariable.set(True)
+leftPaddingVariable = tk.DoubleVar()
+leftPaddingVariable.set(config['leftBorder'])
+rightPaddingVariable = tk.DoubleVar()
+rightPaddingVariable.set(config['rightBorder'])
+topPaddingVariable = tk.DoubleVar()
+topPaddingVariable.set(config['topBorder'])
+bottomPaddingVariable = tk.DoubleVar()
+bottomPaddingVariable.set(config['bottomBorder'])
 def mainWindow():
     touchpadSelection = tk.OptionMenu(window,selectedEvent,*optionNames)
     touchpadSelection.grid(column=0,row=0,columnspan=2)
@@ -56,6 +64,22 @@ def mainWindow():
     dataFrame.grid(column=0,row=1)
 
     def updateOptions():
+        try:
+            left = float(leftPaddingVariable.get())
+            right = float(rightPaddingVariable.get())
+            top = float(topPaddingVariable.get())
+            bottom = float(bottomPaddingVariable.get())
+
+            config['leftBorder'] = left
+            config['rightBorder'] = right
+            config['topBorder'] = top
+            config['bottomBorder'] = bottom
+        except:
+            leftPaddingVariable.set(config['leftBorder'])
+            rightPaddingVariable.set(config['rightBorder'])
+            topPaddingVariable.set(config['topBorder'])
+            bottomPaddingVariable.set(config['bottomBorder'])
+
         configuration.save(config)
 
 
@@ -66,9 +90,20 @@ def mainWindow():
 
 
     optionFrame = tk.LabelFrame(text="Options")
-    optionFrame.grid_columnconfigure((0,1), weight=1)
-   
-    tk.Button(optionFrame,text="Update Options",command=updateOptions).grid(row=2,column=0)
+    tk.Label(optionFrame,text="Padding should be from 0 to 1. 0 means the left/top of the touchpadeflhgewshjkfgeksfjhg").grid(column=0,row=0,columnspan=2)
+    tk.Label(optionFrame,text="Left Padding").grid(sticky="E",column=0,row=1)
+    leftPaddingEntry = tk.Entry(optionFrame,textvariable=leftPaddingVariable)
+    leftPaddingEntry.grid(stick="W",column=1,row=1)
+    tk.Label(optionFrame,text="Right Padding").grid(sticky="E",column=0,row=2)
+    rightPaddingEntry = tk.Entry(optionFrame,textvariable=rightPaddingVariable)
+    rightPaddingEntry.grid(sticky="W",column=1,row=2)
+    tk.Label(optionFrame,text="Top Padding").grid(sticky="E",column=0,row=3)
+    topPaddingEntry = tk.Entry(optionFrame,textvariable=topPaddingVariable)
+    topPaddingEntry.grid(sticky="W",column=1,row=3)
+    tk.Label(optionFrame,text="Bottom Padding").grid(sticky="E",column=0,row=4)
+    bottomPaddingEntry = tk.Entry(optionFrame,textvariable=bottomPaddingVariable)
+    bottomPaddingEntry.grid(sticky="W",column=1,row=4)
+    tk.Button(optionFrame,text="Update Options",command=updateOptions).grid(column=0,row=5,columnspan=2)
     optionFrame.grid(column=1,row=1)
 
     enabledSwitch = tk.Checkbutton(text="Enabled",variable=enabledVariable,command=updateEnabled)
@@ -92,6 +127,7 @@ fingerI = x = y = 0
 clicking = False
 def get_xy_coords(e,device):
     global fingerI
+
     if e.code == 47: # finger index
         fingerI = e.value
 
@@ -119,7 +155,13 @@ def get_xy_coords(e,device):
 
             cursorY = int(stretch(e.value / touchHeight, config['topBorder'], config['bottomBorder']) * 0xFFFF)
 
-    moveTo(cursorX, cursorY)
+    if e.code == 0:
+        global lastCursorX, lastCursorY
+        if lastCursorX != cursorX or lastCursorY != cursorY:
+            moveTo(cursorX, cursorY)
+            lastCursorX = cursorX
+            lastCursorY = cursorY
+
 
     if e.code == 272:
         clicking = e.value == 1
