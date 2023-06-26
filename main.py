@@ -90,7 +90,7 @@ def mainWindow():
 
 
     optionFrame = tk.LabelFrame(text="Options")
-    tk.Label(optionFrame,text="Padding should be from 0 to 1. 0 means the left/top of the touchpadeflhgewshjkfgeksfjhg").grid(column=0,row=0,columnspan=2)
+    tk.Label(optionFrame,text="Padding should be from 0 to 1. 0 means the left/top of the touchpad").grid(column=0,row=0,columnspan=2)
     tk.Label(optionFrame,text="Left Padding").grid(sticky="E",column=0,row=1)
     leftPaddingEntry = tk.Entry(optionFrame,textvariable=leftPaddingVariable)
     leftPaddingEntry.grid(stick="W",column=1,row=1)
