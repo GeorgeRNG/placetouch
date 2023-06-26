@@ -50,6 +50,8 @@ topPaddingVariable = tk.DoubleVar()
 topPaddingVariable.set(config['topBorder'])
 bottomPaddingVariable = tk.DoubleVar()
 bottomPaddingVariable.set(config['bottomBorder'])
+imageDownScale = 2
+calibrationImage = tk.PhotoImage(width=int(touchWidth / imageDownScale), height=int(touchHeight / imageDownScale))
 def mainWindow():
     touchpadSelection = tk.OptionMenu(window,selectedEvent,*optionNames)
     touchpadSelection.grid(column=0,row=0,columnspan=2)
@@ -88,7 +90,6 @@ def mainWindow():
         enabled = enabledVariable.get()
         device.emit(uinput.BTN_LEFT, 0)
 
-
     optionFrame = tk.LabelFrame(text="Options")
     tk.Label(optionFrame,text="Padding should be from 0 to 1. 0 means the left/top of the touchpad").grid(column=0,row=0,columnspan=2)
     tk.Label(optionFrame,text="Left Padding").grid(sticky="E",column=0,row=1)
@@ -106,6 +107,10 @@ def mainWindow():
     tk.Button(optionFrame,text="Update Options",command=updateOptions).grid(column=0,row=5,columnspan=2)
     optionFrame.grid(column=1,row=1)
 
+    calibrationCanvas = tk.Canvas(height=(touchHeight / imageDownScale), width=(touchWidth / imageDownScale), bg="#000000")
+    calibrationCanvas.grid(column=2,row=1)
+    calibrationCanvas.create_image(((touchWidth / imageDownScale) / 2, (touchHeight / imageDownScale) / 2), image=calibrationImage, state="normal")
+
     enabledSwitch = tk.Checkbutton(text="Enabled",variable=enabledVariable,command=updateEnabled)
     enabledSwitch.grid(column=0,row=3)
 
@@ -119,14 +124,13 @@ def touchpad():
     time.sleep(0.1)
 
     for event in options[touchPad].read_loop():
-        if enabled:
-            get_xy_coords(event,device)
+        get_xy_coords(event,device)
 
 cursorX = cursorY = 0
 fingerI = x = y = 0
 clicking = False
 def get_xy_coords(e,device):
-    global fingerI
+    global fingerI, x, y
 
     if e.code == 47: # finger index
         fingerI = e.value
@@ -139,7 +143,7 @@ def get_xy_coords(e,device):
     if fingerI == 0:
         global cursorX, cursorY
         if e.code == 53:
-            global touchWidth, x
+            global touchWidth
             x = e.value
             if(e.value > touchWidth):
                 touchWidth = e.value
@@ -147,7 +151,7 @@ def get_xy_coords(e,device):
 
             cursorX = int(stretch(e.value / touchWidth, config['leftBorder'], config['rightBorder']) * 0xFFFF)
         if e.code == 54:
-            global touchHeight, y
+            global touchHeight
             y = e.value
             if(e.value > touchHeight):
                 touchHeight = e.value
@@ -157,8 +161,10 @@ def get_xy_coords(e,device):
 
     if e.code == 0:
         global lastCursorX, lastCursorY
+        calibrationImage.put("#ffffff", (int(x / imageDownScale),int(y / imageDownScale)))
         if lastCursorX != cursorX or lastCursorY != cursorY:
-            moveTo(cursorX, cursorY)
+            if enabled:
+                moveTo(cursorX, cursorY)
             lastCursorX = cursorX
             lastCursorY = cursorY
 
@@ -166,7 +172,8 @@ def get_xy_coords(e,device):
     if e.code == 272:
         clicking = e.value == 1
         clickingText.set("Clicking: " + str(clicking))
-        device.emit(uinput.BTN_LEFT, e.value)
+        if enabled:
+            device.emit(uinput.BTN_LEFT, e.value)
 
 def stretch(value, start, end):
     if start == end:
