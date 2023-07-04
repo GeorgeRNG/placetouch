@@ -13,13 +13,6 @@ for (i, device) in enumerate(options):
     if("touchpad" in device.name.lower()):
         touchPad = i
 
-events = (
-    uinput.BTN_LEFT,
-    uinput.ABS_X + (0, 0xFFFF, 0, 0),
-    uinput.ABS_Y + (0, 0xFFFF, 0, 0)
-)
-device = uinput.Device(events)
-
 config = configuration.load()
 configuration.save(config)
 
@@ -29,6 +22,16 @@ capabilities = options[touchPad].capabilities()[3]
 touchHeight = capabilities[1][1].max
 touchWidth = capabilities[0][1].max
 # touchHeight = touchWidth = 0
+
+absWidth = touchWidth
+absHeight = touchHeight
+
+events = (
+    uinput.BTN_LEFT,
+    uinput.ABS_X + (0, absWidth, 0, 0),
+    uinput.ABS_Y + (0, absHeight, 0, 0)
+)
+device = uinput.Device(events)
 
 window = tk.Tk()
 # window.grid_columnconfigure((0,1))
@@ -50,7 +53,7 @@ topPaddingVariable = tk.DoubleVar()
 topPaddingVariable.set(config['topBorder'])
 bottomPaddingVariable = tk.DoubleVar()
 bottomPaddingVariable.set(config['bottomBorder'])
-imageDownScale = 2
+imageDownScale = 5
 calibrationImage = tk.PhotoImage(width=int(touchWidth / imageDownScale), height=int(touchHeight / imageDownScale))
 def mainWindow():
     touchpadSelection = tk.OptionMenu(window,selectedEvent,*optionNames)
@@ -149,7 +152,7 @@ def get_xy_coords(e,device):
                 touchWidth = e.value
             xText.set("Touch X: " + str(x) + " / " + str(touchWidth))
 
-            cursorX = int(stretch(e.value / touchWidth, config['leftBorder'], config['rightBorder']) * 0xFFFF)
+            cursorX = int(stretch(e.value / touchWidth, config['leftBorder'], config['rightBorder']) * absWidth)
         if e.code == 54:
             global touchHeight
             y = e.value
@@ -157,7 +160,7 @@ def get_xy_coords(e,device):
                 touchHeight = e.value
             yText.set("Touch Y: " + str(y) + " / " + str(touchHeight))
 
-            cursorY = int(stretch(e.value / touchHeight, config['topBorder'], config['bottomBorder']) * 0xFFFF)
+            cursorY = int(stretch(e.value / touchHeight, config['topBorder'], config['bottomBorder']) * absHeight)
 
     if e.code == 0:
         global lastCursorX, lastCursorY
